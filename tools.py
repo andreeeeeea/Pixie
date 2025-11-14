@@ -112,6 +112,60 @@ def find_application_registry(app_name):
     return None
 
 
+def get_running_processes():
+    """Helper: Gets list of currently running process names.
+    
+    Returns:
+        List of process names (e.g., ['notepad.exe', 'chrome.exe', ...])"""
+    
+    try:
+        import psutil
+        processes = [p.name().lower for p in psutil.process_iter(['name'])]
+
+        return processes
+    except ImportError:
+        import subprocess
+        try:
+            result = subprocess.run(['tasklist'], capture_output=True, text=True)
+            lines = result.stdout.split('\n')[3:]
+            processes = []
+
+            for line in lines:
+                if line.strip():
+                    process_name = line.split()[0].lower()
+                    processes.append(process_name)
+                return processes
+        except Exception as e:
+            print(f"DEBUG: Could not get processes: {e}")
+            return []
+
+def is_app_running(app_name):
+    """Helper: Checks if an application is currently running.
+
+    Args:
+        app_name: Name of app to check (e.g. 'notepad', 'chrome')
+
+    Returns:
+        Boolean indicating if app is running"""
+
+    processes = get_running_processes()
+    app_lower = app_name.lower()
+
+    checks = [
+        f"{app_lower}.exe",
+        app_lower,
+    ]
+    print(f"DEBUG: Checks: {checks}")
+
+    for process in processes:
+        for check in checks:
+            if check in process:
+                print(f"DEBUG: Found running process: {process}")
+                return True
+
+    return False
+
+
 # ============================================================================
 # CORE PRIMITIVE TOOLS (Basic computer control)
 # ============================================================================
@@ -245,56 +299,64 @@ def open_app(app_name):
         except Exception as e:
             return f"Error: {str(e)}"
 
-
-def check_if_app_is_open(app_name):
-    """Checks if an application is currently running.
-
-    Args:
-        app_name: Name of application to check
-
-    Returns:
-        Boolean indicating if app is running
-
-    TODO: Implement using psutil or tasklist
-    """
-    pass
-
-
 # ============================================================================
 # VERIFICATION FUNCTIONS
 # ============================================================================
 
 def verify_action_succeeded(action_description):
-    """Verifies if an action succeeded using AI vision analysis.
+    """Verifies if an action succeeded using a hybrid approach.
 
-    Takes a screenshot and asks Gemini to verify if the described action
-    actually succeeded by analyzing what's visible on screen.
+    Strategy:
+    1. If an action involves opening an app -> check running processes first. 
+    2. If process check is unclear/action is not app-related -> use vision.
+
+    Vision takes a screenshot and asks Gemini to verify if the described action actually succeeded by analysing what's visible on the screen.
 
     Args:
-        action_description: Description of what was just done
-                          (e.g., "Opened Notepad", "Clicked the submit button")
+        action_description: Description of what was just done (e.g., 'Opened Notepad', 'Clicked the submit button')
 
     Returns:
         dict: {
-            'success': bool,      # True if action succeeded
-            'explanation': str    # What the AI observed
+            'success': bool,        -> True if action succeeded
+            'explanation': str,     -> What was observed
+            'method': str           -> 'process' or 'vision
         }
-
-    Example:
-        result = verify_action_succeeded("Opened Notepad")
-        if result['success']:
-            print("Action verified!")
-        else:
-            print(f"Failed: {result['explanation']}")
     """
-    import pyautogui
+    import re
 
+    action_lower = action_description.lower()
+
+    if 'open' in action_lower:
+        patterns = [
+            r'open(?:ed|ing)?\s+([a-zA-Z]+)',
+            r'launch(?:ed|ing)?\s+([a-zA-Z]+)'
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, action_lower)
+            if match:
+                app_name = match.group(1)
+                print(f"DEBUG: Extracted app name: {app_name}")
+
+                if is_app_running(app_name):
+                    return {
+                        'success': True,
+                        'explanation': f"Process check confirmed: {app_name} is running",
+                        'method': 'process'
+                    }
+                else:
+                    return {
+                        'success': False,
+                        'explanation': f"Process check failed: {app_name} is not running",
+                        'method': 'process'
+                    }
+    print("DEBUG: Using vision-based verification")
     try:
-        time.sleep(1)  # Wait for UI to update
-        screenshot = pyautogui.screenshot()
+        time.sleep(1)
+        screenshot = take_screenshot()
 
         vision_model = genai.GenerativeModel('gemini-2.5-flash')
-        prompt = f"Did this action succeed: {action_description}? Answer YES or NO, then explain what you see."
+        prompt = f"Did this action succeed: {action_description}? Answer YES or NO, then explain what you see in a short sentence."
 
         response = vision_model.generate_content([prompt, screenshot])
         response_text = response.text
@@ -302,16 +364,16 @@ def verify_action_succeeded(action_description):
         success = 'yes' in response_text.lower()
 
         return {
-            'success': success,
-            'explanation': response_text
+            'success' : success,
+            'explanation': response_text,
+            'method': 'vision'
         }
-
     except Exception as e:
         return {
             'success': False,
-            'explanation': f'Error: {str(e)}'
+            'explanation': f'Error: {str(e)}',
+            'method': 'vision'
         }
-
 
 # ============================================================================
 # VISION FUNCTIONS (Currently disabled to save API costs)
