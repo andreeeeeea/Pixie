@@ -3,6 +3,9 @@ Helper functions for registry search and process management
 """
 
 import os
+import winreg
+import glob
+import subprocess
 
 
 def extract_exe_from_registry(subkey, display_name):
@@ -20,9 +23,6 @@ def extract_exe_from_registry(subkey, display_name):
     Returns:
         Full path to .exe file, or None if not found
     """
-    import winreg
-    import glob
-
     try:
         icon_path = winreg.QueryValueEx(subkey, "DisplayIcon")[0]
         full_path = icon_path.replace('"', '').split(',')[0]
@@ -84,8 +84,6 @@ def find_application_registry(app_name):
     Returns:
         Full path to .exe file, or None if not found
     """
-    import winreg
-
     app_name_lower = app_name.lower()
     print(f"DEBUG: Searching registry for: {app_name}")
 
@@ -166,11 +164,9 @@ def get_running_processes():
 
     try:
         import psutil
-        processes = [p.name().lower for p in psutil.process_iter(['name'])]
-
+        processes = [p.name().lower() for p in psutil.process_iter(['name'])]
         return processes
     except ImportError:
-        import subprocess
         try:
             result = subprocess.run(['tasklist'], capture_output=True, text=True)
             lines = result.stdout.split('\n')[3:]
@@ -180,7 +176,7 @@ def get_running_processes():
                 if line.strip():
                     process_name = line.split()[0].lower()
                     processes.append(process_name)
-                return processes
+            return processes
         except Exception as e:
             print(f"DEBUG: Could not get processes: {e}")
             return []

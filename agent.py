@@ -5,8 +5,9 @@ A computer control agent using Google Gemini and primitive tools
 
 import google.generativeai as genai
 import os
+import time
 from dotenv import load_dotenv
-from tools import open_app, type_text, press_key, click, take_screenshot, calculate
+from tools import open_app, type_text, clear_text, press_key, press_hotkey, click, take_screenshot, verify_action_succeeded
 
 load_dotenv()
 api_key = os.getenv('GEMINI_API_KEY')
@@ -14,7 +15,7 @@ genai.configure(api_key=api_key)
 
 model = genai.GenerativeModel(
     'gemini-2.5-flash',
-    tools=[open_app, type_text, press_key, click, take_screenshot, calculate],
+    tools=[open_app, type_text, press_key, press_hotkey, click, take_screenshot],
     generation_config={
         'temperature': 0.2,
         'max_output_tokens': 2048,
@@ -26,10 +27,11 @@ model = genai.GenerativeModel(
 )
 
 TOOL_FUNCTIONS = {
-    'calculate': calculate,
     'open_app': open_app,
     'type_text': type_text,
+    'clear_text': clear_text,
     'press_key': press_key,
+    'press_hotkey': press_hotkey,
     'click': click,
     'take_screenshot': take_screenshot
 }
@@ -48,6 +50,9 @@ while True:
 
     for iteration in range(1, max_iterations + 1):
         print(f"\n--- Iteration {iteration} ---")
+
+        if iteration > 1:
+            time.sleep(2)
 
         response = model.generate_content(messages)
 
@@ -68,8 +73,17 @@ while True:
                 tool_function = TOOL_FUNCTIONS[function_name]
                 result = tool_function(**function_args)
 
+                if function_name == 'open_app' or function_name == 'type_text':
+                    print("Running verification...")
+                    verification = verify_action_succeeded(function_name, function_args)
+                    print(f"Verification ({verification['method']}): {verification['explanation']}")
+
+                    if verification['success']:
+                        result_text = f"Success: {result}"
+                    else:
+                        result_text = f"Action might have failed. {verification['explanation']}'. Please try again or try a different approach."
+
                 screenshot_image = result if function_name == 'take_screenshot' else None
-                result_text = "Screenshot captured" if screenshot_image else result
             else:
                 result_text = f"Error: Unknown function {function_name}"
                 screenshot_image = None

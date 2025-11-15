@@ -1,5 +1,6 @@
 /venv
 .env
 /__pycache__
+/tools/__pycache__
 .agent_backup.py
 .tools_old.py

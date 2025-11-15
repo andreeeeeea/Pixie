@@ -8,7 +8,7 @@ from .helpers import is_app_running
 from .primitives import take_screenshot
 
 
-def verify_action_succeeded(action_description):
+def verify_action_succeeded(action_name, action_args):
     """Verifies if an action succeeded using a hybrid approach.
 
     Strategy:
@@ -18,7 +18,8 @@ def verify_action_succeeded(action_description):
     Vision takes a screenshot and asks Gemini to verify if the described action actually succeeded by analysing what's visible on the screen.
 
     Args:
-        action_description: Description of what was just done (e.g., 'Opened Notepad', 'Clicked the submit button')
+        action_name: The function name (e.g., 'open_app', 'click')
+        action_args: The argument dict (e.g., {'app_name': 'notepad'})
 
     Returns:
         dict: {
@@ -27,41 +28,20 @@ def verify_action_succeeded(action_description):
             'method': str           -> 'process' or 'vision
         }
     """
-    import re
+    if action_name == 'open_app':
+        app_name = action_args.get('app_name')
+        if app_name and is_app_running(app_name):
+            return {'success': True, 'explanation': f"{app_name} is running", 'method': 'process'}
+        else:
+            return {'success': False, 'explanation': f"{app_name} is not running", 'method': 'process'}
 
-    action_lower = action_description.lower()
-
-    if 'open' in action_lower:
-        patterns = [
-            r'open(?:ed|ing)?\s+([a-zA-Z]+)',
-            r'launch(?:ed|ing)?\s+([a-zA-Z]+)'
-        ]
-
-        for pattern in patterns:
-            match = re.search(pattern, action_lower)
-            if match:
-                app_name = match.group(1)
-                print(f"DEBUG: Extracted app name: {app_name}")
-
-                if is_app_running(app_name):
-                    return {
-                        'success': True,
-                        'explanation': f"Process check confirmed: {app_name} is running",
-                        'method': 'process'
-                    }
-                else:
-                    return {
-                        'success': False,
-                        'explanation': f"Process check failed: {app_name} is not running",
-                        'method': 'process'
-                    }
     print("DEBUG: Using vision-based verification")
     try:
         time.sleep(1)
         screenshot = take_screenshot()
 
         vision_model = genai.GenerativeModel('gemini-2.5-flash')
-        prompt = f"Did this action succeed: {action_description}? Answer YES or NO, then explain what you see in a short sentence."
+        prompt = f"Did this action succeed: {action_name} {action_args}? Answer YES or NO, then explain what you see in a short sentence."
 
         response = vision_model.generate_content([prompt, screenshot])
         response_text = response.text

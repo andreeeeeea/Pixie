@@ -2,21 +2,8 @@
 Core primitive tools for basic computer control
 """
 
-
-def calculate(expression):
-    """Performs mathematical calculations using eval().
-
-    Args:
-        expression: Math expression as string (e.g., "2 + 2", "10 * 5")
-
-    Returns:
-        Result as string, or error message
-    """
-    try:
-        ans = eval(expression)
-        return str(ans)
-    except Exception:
-        return "Error: invalid expression"
+import pyautogui
+import time
 
 
 def type_text(text):
@@ -28,12 +15,27 @@ def type_text(text):
     Returns:
         Confirmation message or error
     """
-    import pyautogui
     try:
         pyautogui.write(text, interval=0.1)
         return f"Typed text: {text}"
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+def clear_text():
+    """Clears text from the current text field.
+
+    Selects all text and clears it.
+
+    Returns:
+        Success message"""
+
+    pyautogui.write('ctrl', 'a')
+    time.sleep(0.1)
+    pyautogui.press('delete')
+    time.sleep(0.1)
+
+    return "Cleared text field"
 
 
 def press_key(key):
@@ -45,13 +47,18 @@ def press_key(key):
     Returns:
         Confirmation message or error
     """
-    import pyautogui
-    try:
-        pyautogui.press(key)
-        return f"Pressed key: {key}"
-    except Exception as e:
-        return f"Error: {str(e)}"
+    pyautogui.press(key)
 
+def press_hotkey(keys):
+    """Presses hotkeys.
+    Args:
+        *keys: Variable number of key names to press together
+
+    Returns:
+        Success message"""
+
+    pyautogui.hotkey(*keys)
+    return f"Pressed hotkey: {'+'.join(keys)}"
 
 def click(x, y):
     """Clicks at the specified screen coordinates.
@@ -63,7 +70,6 @@ def click(x, y):
     Returns:
         Confirmation message or error
     """
-    import pyautogui
     try:
         pyautogui.click(x, y)
         return f"Clicked at coordinates: ({x}, {y})"
@@ -77,7 +83,6 @@ def take_screenshot():
     Returns:
         PIL Image object, or error message string
     """
-    import pyautogui
     try:
         screenshot = pyautogui.screenshot()
         return screenshot
