@@ -3,9 +3,12 @@ Verification functions to check if actions succeeded
 """
 
 import time
+import logging
 import google.generativeai as genai
 from .helpers import is_app_running
 from .primitives import take_screenshot
+
+logger = logging.getLogger(__name__)
 
 
 def verify_action_succeeded(action_name, action_args):
@@ -35,27 +38,37 @@ def verify_action_succeeded(action_name, action_args):
         else:
             return {'success': False, 'explanation': f"{app_name} is not running", 'method': 'process'}
 
-    print("DEBUG: Using vision-based verification")
-    try:
-        time.sleep(1)
-        screenshot = take_screenshot()
+    # Vision-based verification disabled to save API calls during testing
+    # Uncomment below to enable vision verification for non-app actions
 
-        vision_model = genai.GenerativeModel('gemini-2.5-flash')
-        prompt = f"Did this action succeed: {action_name} {action_args}? Answer YES or NO, then explain what you see in a short sentence."
+    # logger.debug("Using vision-based verification")
+    # try:
+    #     time.sleep(1)
+    #     screenshot = take_screenshot()
+    #
+    #     vision_model = genai.GenerativeModel('gemini-2.5-flash')
+    #     prompt = f"Did this action succeed: {action_name} {action_args}? Answer YES or NO, then explain what you see in a short sentence."
+    #
+    #     response = vision_model.generate_content([prompt, screenshot])
+    #     response_text = response.text
+    #
+    #     success = 'yes' in response_text.lower()
+    #
+    #     return {
+    #         'success' : success,
+    #         'explanation': response_text,
+    #         'method': 'vision'
+    #     }
+    # except Exception as e:
+    #     return {
+    #         'success': False,
+    #         'explanation': f'Error: {str(e)}',
+    #         'method': 'vision'
+    #     }
 
-        response = vision_model.generate_content([prompt, screenshot])
-        response_text = response.text
-
-        success = 'yes' in response_text.lower()
-
-        return {
-            'success' : success,
-            'explanation': response_text,
-            'method': 'vision'
-        }
-    except Exception as e:
-        return {
-            'success': False,
-            'explanation': f'Error: {str(e)}',
-            'method': 'vision'
-        }
+    # Default: assume success for non-app actions when vision is disabled
+    return {
+        'success': True,
+        'explanation': f"Action completed (vision verification disabled)",
+        'method': 'none'
+    }

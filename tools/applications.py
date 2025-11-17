@@ -5,10 +5,13 @@ Application management tools
 import os
 import time
 import subprocess
+import logging
 import pyautogui
 import win32gui
 import win32con
 from .helpers import find_application_registry, is_app_running
+
+logger = logging.getLogger(__name__)
 
 
 def open_app(app_name):
@@ -29,7 +32,7 @@ def open_app(app_name):
         open_app('brave')
     """
     if is_app_running(app_name):
-        print(f"DEBUG: {app_name} is already running, focusing window...")
+        logger.debug(f"Application {app_name} is already running, focusing window")
         try:
             hwnd = None
             def callback(window_hwnd, app_name_lower):
@@ -64,14 +67,14 @@ def open_app(app_name):
                 time.sleep(0.2)
 
                 window_title = win32gui.GetWindowText(hwnd)
-                print(f"DEBUG: Focused window: {window_title}")
+                logger.debug(f"Successfully focused window: {window_title}")
                 return f"Focused existing '{app_name}' window"
             else:
                 return f"'{app_name}' is running but couldn't find window"
         except Exception as e:
             return f"Error focusing window: {str(e)}"
 
-    print(f"DEBUG: {app_name} not running, launching new instance...")
+    logger.debug(f"Application {app_name} not running, launching new instance")
 
     windows_apps = {
         'notepad': r'C:\Windows\System32\notepad.exe',
@@ -95,7 +98,7 @@ def open_app(app_name):
 
     if full_path and os.path.exists(full_path):
         try:
-            print(f"DEBUG: Launching: {full_path}")
+            logger.debug(f"Launching application: {full_path}")
             subprocess.Popen([full_path])
             time.sleep(1.5)
 
@@ -133,15 +136,15 @@ def open_app(app_name):
                     time.sleep(0.2)
 
                     window_title = win32gui.GetWindowText(hwnd)
-                    print(f"DEBUG: Focused new window: {window_title}")
+                    logger.debug(f"Successfully focused new window: {window_title}")
             except Exception as e:
-                print(f"DEBUG: Could not auto-focus new window: {e}")
+                logger.debug(f"Could not auto-focus new window: {e}")
 
             return f"Opened '{app_name}' successfully"
         except Exception as e:
             return f"Error launching {full_path}: {str(e)}"
     else:
-        print(f"DEBUG: Couldn't find full path, trying Win+R with: {app_name}")
+        logger.debug(f"Could not find application path, attempting to launch via Run dialog: {app_name}")
         try:
             pyautogui.hotkey('win', 'r')
             time.sleep(0.5)

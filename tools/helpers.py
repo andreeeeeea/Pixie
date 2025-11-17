@@ -6,6 +6,9 @@ import os
 import winreg
 import glob
 import subprocess
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def extract_exe_from_registry(subkey, display_name):
@@ -27,15 +30,15 @@ def extract_exe_from_registry(subkey, display_name):
         icon_path = winreg.QueryValueEx(subkey, "DisplayIcon")[0]
         full_path = icon_path.replace('"', '').split(',')[0]
         if full_path.endswith('.exe') and 'uninstall' not in full_path.lower() and os.path.exists(full_path):
-            print(f"DEBUG: Found exe from DisplayIcon: {full_path}")
+            logger.debug(f"Found executable from DisplayIcon: {full_path}")
             return full_path
     except Exception as e:
-        print(f"DEBUG: DisplayIcon failed: {e}")
+        logger.debug(f"DisplayIcon lookup failed: {e}")
 
     try:
         install_location = winreg.QueryValueEx(subkey, "InstallLocation")[0]
         if install_location and os.path.exists(install_location):
-            print(f"DEBUG: Found InstallLocation: {install_location}")
+            logger.debug(f"Found InstallLocation: {install_location}")
 
             exe_files = glob.glob(os.path.join(install_location, "*.exe"))
 
@@ -50,13 +53,13 @@ def extract_exe_from_registry(subkey, display_name):
                 for exe in valid_exes:
                     exe_name = os.path.basename(exe).lower()
                     if any(part in exe_name for part in app_name_parts if len(part) > 3):
-                        print(f"DEBUG: Found matching exe in InstallLocation: {exe}")
+                        logger.debug(f"Found matching executable in InstallLocation: {exe}")
                         return exe
 
-                print(f"DEBUG: Using first valid exe in InstallLocation: {valid_exes[0]}")
+                logger.debug(f"Using first valid executable from InstallLocation: {valid_exes[0]}")
                 return valid_exes[0]
     except Exception as e:
-        print(f"DEBUG: InstallLocation failed: {e}")
+        logger.debug(f"InstallLocation lookup failed: {e}")
 
     try:
         uninstall_path = winreg.QueryValueEx(subkey, "UninstallString")[0]
@@ -65,12 +68,12 @@ def extract_exe_from_registry(subkey, display_name):
             full_path = full_path.replace('"', '')
 
             if 'uninstall' not in full_path.lower() and os.path.exists(full_path):
-                print(f"DEBUG: Found exe from UninstallString: {full_path}")
+                logger.debug(f"Found executable from UninstallString: {full_path}")
                 return full_path
             else:
-                print(f"DEBUG: Skipping UninstallString (contains 'uninstall' or doesn't exist): {full_path}")
+                logger.debug(f"Skipping UninstallString path: {full_path}")
     except Exception as e:
-        print(f"DEBUG: UninstallString failed: {e}")
+        logger.debug(f"UninstallString lookup failed: {e}")
 
     return None
 
@@ -85,7 +88,7 @@ def find_application_registry(app_name):
         Full path to .exe file, or None if not found
     """
     app_name_lower = app_name.lower()
-    print(f"DEBUG: Searching registry for: {app_name}")
+    logger.debug(f"Searching registry for application: {app_name}")
 
     registry_roots = [
         (winreg.HKEY_LOCAL_MACHINE, "HKLM"),
@@ -104,7 +107,7 @@ def find_application_registry(app_name):
             try:
                 key = winreg.OpenKey(root, reg_path)
                 num_subkeys = winreg.QueryInfoKey(key)[0]
-                print(f"DEBUG: Checking {root_name}\\{reg_path} ({num_subkeys} entries)")
+                logger.debug(f"Checking registry path: {root_name}\\{reg_path} with {num_subkeys} entries")
 
                 for i in range(num_subkeys):
                     try:
@@ -114,7 +117,7 @@ def find_application_registry(app_name):
                         display_name_lower = display_name.lower()
 
                         if app_name_lower == display_name_lower:
-                            print(f"DEBUG: Found EXACT match: {display_name}")
+                            logger.debug(f"Found exact match: {display_name}")
 
                             full_path = extract_exe_from_registry(subkey, display_name)
                             if full_path:
@@ -123,7 +126,7 @@ def find_application_registry(app_name):
                                 return full_path
 
                         elif app_name_lower in display_name_lower:
-                            print(f"DEBUG: Found partial match: {display_name}")
+                            logger.debug(f"Found partial match: {display_name}")
                             partial_matches.append((subkey_name, display_name, root, reg_path))
 
                         winreg.CloseKey(subkey)
@@ -132,10 +135,10 @@ def find_application_registry(app_name):
 
                 winreg.CloseKey(key)
             except Exception as e:
-                print(f"DEBUG: Could not open {root_name}\\{reg_path}: {e}")
+                logger.debug(f"Could not open registry path {root_name}\\{reg_path}: {e}")
 
     if partial_matches:
-        print(f"DEBUG: No exact match found, trying {len(partial_matches)} partial matches")
+        logger.debug(f"No exact match found, checking {len(partial_matches)} partial matches")
         for subkey_name, display_name, root, reg_path in partial_matches:
             try:
                 key = winreg.OpenKey(root, reg_path)
@@ -152,7 +155,7 @@ def find_application_registry(app_name):
             except Exception:
                 continue
 
-    print(f"DEBUG: No match found in registry")
+    logger.debug(f"Application not found in registry: {app_name}")
     return None
 
 
@@ -178,7 +181,7 @@ def get_running_processes():
                     processes.append(process_name)
             return processes
         except Exception as e:
-            print(f"DEBUG: Could not get processes: {e}")
+            logger.debug(f"Could not retrieve process list: {e}")
             return []
 
 def is_app_running(app_name):
@@ -197,12 +200,12 @@ def is_app_running(app_name):
         f"{app_lower}.exe",
         app_lower,
     ]
-    print(f"DEBUG: Checks: {checks}")
+    logger.debug(f"Checking for running processes matching: {checks}")
 
     for process in processes:
         for check in checks:
             if check in process:
-                print(f"DEBUG: Found running process: {process}")
+                logger.debug(f"Found running process: {process}")
                 return True
 
     return False
