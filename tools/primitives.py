@@ -88,3 +88,25 @@ def take_screenshot():
         return screenshot
     except Exception as e:
         return f"Error: {str(e)}"
+
+
+# Common hotkey shortcuts for quick access
+COMMON_HOTKEYS = {
+    'copy': ['ctrl', 'c'],
+    'paste': ['ctrl', 'v'],
+    'cut': ['ctrl', 'x'],
+    'save': ['ctrl', 's'],
+    'undo': ['ctrl', 'z'],
+    'redo': ['ctrl', 'y'],
+    'select_all': ['ctrl', 'a'],
+    'find': ['ctrl', 'f'],
+    'close': ['alt', 'f4'],
+    'close_tab': ['ctrl', 'w'],
+    'new_tab': ['ctrl', 't'],
+    'minimize': ['win', 'down'],
+    'maximize': ['win', 'up'],
+    'screenshot': ['win', 'shift', 's'],
+    'task_manager': ['ctrl', 'shift', 'esc'],
+    'switch_window': ['alt', 'tab'],
+    'show_desktop': ['win', 'd'],
+}
